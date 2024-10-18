@@ -2,8 +2,13 @@
 export default {
   content: [],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        "chatgpt-light": "#f4f4f4",
+        "chatgpt-dark": "#202123",
+      },
+    },
   },
   plugins: [],
-}
+};
 
