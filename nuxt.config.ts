@@ -9,11 +9,11 @@ export default defineNuxtConfig({
 
   icon: {
     serverBundle: {
-      collections: ["uil", "mdi"], // <!--- this
+      collections: ["uil", "mdi"],
     },
   },
 
   runtimeConfig: {
-    openAIApi: process.env.OPENAI_API_KEY,
+    TOGETHER_API_KEY: process.env.NUXT_TOGETHER_API_KEY
   },
 });
