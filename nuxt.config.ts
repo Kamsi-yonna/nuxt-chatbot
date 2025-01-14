@@ -13,7 +13,7 @@ export default defineNuxtConfig({
     },
   },
 
-  // runtimeConfig: {
-  //   openAIApi: process.env.OPENAI_API_KEY,
-  // },
+  runtimeConfig: {
+    openAIApi: process.env.OPENAI_API_KEY,
+  },
 });
