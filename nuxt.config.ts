@@ -1,9 +1,19 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   devtools: { enabled: true },
-  modules: ["@nuxtjs/tailwindcss"],
 
-  runtimeConfig: {
-    openAIApi: process.env.OPENAI_API_KEY,
+  pages: true,
+
+  ssr: true,
+  modules: ["@nuxtjs/tailwindcss", "nuxt-icon", ["@nuxt/ui", {}]],
+
+  icon: {
+    serverBundle: {
+      collections: ["uil", "mdi"], // <!--- this
+    },
   },
+
+  // runtimeConfig: {
+  //   openAIApi: process.env.OPENAI_API_KEY,
+  // },
 });
