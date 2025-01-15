@@ -46,7 +46,7 @@
                 style="display: var(--screen-size-hidden-on-compact-mode, flex);">
                 <div class="flex items-center justify-center overflow-hidden rounded-full">
                     <div class="relative flex"><img
-                            src="https://lh3.googleusercontent.com/a/AEdFTp6WWREoI5mv-I_-pKpCK2m3Hehr_d-29fl9prsKOA=s96-c"
+                            src=""
                             alt="User" width="32" height="32" class="rounded-sm" referrerpolicy="no-referrer"></div>
                 </div>
             </button></div>
