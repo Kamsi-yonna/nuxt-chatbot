@@ -1,57 +1,73 @@
-import https from "https";
-
 export default defineEventHandler(async (event) => {
+  interface ChatMessage {
+    id?: number;
+    actor: "AI" | "Human";
+    message: string;
+  }
+
+  // console.log("API endpoint reached");
   const config = useRuntimeConfig();
 
-  let prompt =
-    "This is a conversation with an AI assistant" +
-    "The assistant is helpful, creative, clever, and very friendly. The assistant always goes into details. " +
-    "The assistant provided very detailed explanations for his answers. Be very verbose. The assistant marks code with markdown. " +
-    "The assistant always provides code examples when it can.\n\n";
+  try {
+    const incomingMessages = (await readBody(event)) as ChatMessage[];
+    console.log("Received messages:", incomingMessages);
 
-  let messages = [
-    {
-      actor: "Human",
-      message: "Hello, how are you.",
-    },
-    {
-      actor: "AI",
-      message: "Hey hey, how can I assist you?",
-    },
-  ];
+    const prompt =
+      incomingMessages
+        .map((message: ChatMessage) => `${message.actor}: ${message.message}`)
+        .join("\n") + "\nAI:";
 
-  const prevMessages = await readBody(event);
-  messages = messages.concat(prevMessages);
+    console.log("Generated prompt:", prompt);
 
-  prompt +=
-    messages
-      .map((message) => `${message.actor}: ${message.message}`)
-      .join("\n") + "\nAI:";
+    const req = await fetch("https://api.together.xyz/inference", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.TOGETHER_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "deepseek-ai/DeepSeek-V3",
+        prompt: prompt,
+        max_tokens: 300,
+        temperature: 0.7,
+        top_p: 0.02,
+        repetition_penalty: 1,
+        stop: ["Human:", "AI:"],
+      }),
+    });
 
-  const req = await fetch("https://api.openai.com/v1/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${config.OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: "text-davinci-003", // Specifies which model to use for generating completions
-      prompt: prompt, // The input text that you want the model to respond to
-      temperature: 0.9, // Controls randomness in the output (higher values = more random)
-      max_tokens: 512, // Maximum number of tokens (words and punctuation) in the generated response
-      top_p: 1.0, // Controls diversity via nucleus sampling (higher values = more diverse)
-      frequency_penalty: 0, // Reduces repetition of words in the output (0 = no penalty)
-      presence_penalty: 0.6, // Increases the likelihood of new topics being introduced (higher values = more likely)
-      stop: [" Human:", " AI:"],
-    }),
-  });
+    const res = await req.json();
+    console.log("Raw API response:", res);
 
-  const res = await req.json();
-  console.log(res, "from GPT3 after I beat him");
+    if (!req.ok) {
+      console.error("Together API error:", res);
+      throw createError({
+        statusCode: req.status,
+        message: res.message || "Together API error",
+      });
+    }
 
-  const result = res.choices[0];
-  return {
-    message: result.text,
-    finish_reason: result.finish_reason,
-  };
+    const text =
+      res.output?.text ||
+      res.text ||
+      (Array.isArray(res.choices) && res.choices[0]?.text);
+
+    if (!text) {
+      console.error("Unexpected API response structure:", res);
+      throw createError({
+        statusCode: 500,
+        message: "Could not extract text from API response",
+      });
+    }
+
+    return {
+      message: text.trim(),
+    };
+  } catch (error) {
+    console.error("Server error:", error);
+    throw createError({
+      statusCode: 500,
+      message: error instanceof Error ? error.message : "Internal server error",
+    });
+  }
 });

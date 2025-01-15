@@ -1,9 +1,9 @@
 <template>
     <main class="relative bg-chatgpt-dark text-white h-screen w-full flex-1 overflow-auto transition-width">
-        <div role="presentation" class="composer-parent flex h-full flex-col focus-visible:outline-0" tabindex="0">
-            <div class="flex-1 overflow-hidden">
-                <div class="h-full">
-                    <div class="react-scroll-to-bottom--css-mzbec-79elbk h-full">
+        <div role="presentation overflow-auto flex-col" >
+            <div class="flex-1 mb-48">
+                <div class="">
+                    <div class="react-scroll-to-bottom--css-mzbec-79elb">
                         <div class="react-scroll-to-bottom--css-mzbec-1n7m0yu">
                             <div class="flex flex-col text-sm md:pb-9" style="">
                                 <NavbarComponent />
@@ -100,7 +100,7 @@
                     </div>
                 </div>
             </div>
-            <div class="md:pt-0 dark:border-white/20 md:border-transparent md:dark:border-transparent w-full">
+            <div class="md:pt-4 mt-2 dark:border-white/20 md:border-transparent md:dark:border-transparent w-full fixed bottom-0 bg">
                 <div>
                     <div class="m-auto text-base px-3 md:px-4 w-full lg:px-4 xl:px-5">
                         <div class="mx-auto flex flex-1 gap-4 text-base md:gap-5 lg:gap-6 md:max-w-3xl">
@@ -111,15 +111,16 @@
                                         placeholder="Message ChatGPT" @keypress.enter.exact.prevent="submitMessage"
                                         @keydown.shift.enter="moveToNextLine" v-model="message"></textarea>
                                 </div>
+
                                 <button @click.prevent="submitMessage" aria-label="Send prompt" type="submit"
-                                    class="flex h-12 w-12 items-center justify-center rounded-full bg-black text-white"
-                                    :disabled="!message">
-                                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none"
-                                        xmlns="http://www.w3.org/2000/svg">
-                                        <path fill-rule="evenodd" clip-rule="evenodd"
-                                            d="M15.1918 8.90615C15.6381 8.45983 16.3618 8.45983 16.8081 8.90615L21.9509 14.049C22.3972 14.4953 22.3972 15.2189 21.9509 15.6652C21.5046 16.1116 20.781 16.1116 20.3347 15.6652L17.1428 12.4734V22.2857C17.1428 22.9169 16.6311 23.4286 15.9999 23.4286C15.3688 23.4286 14.8571 22.9169 14.8571 22.2857V12.4734L11.6652 15.6652C11.2189 16.1116 10.4953 16.1116 10.049 15.6652C9.60265 15.2189 9.60265 14.4953 10.049 14.049L15.1918 8.90615Z"
-                                            fill="white"></path>
-                                    </svg>
+                                    class="flex h-12 w-12 items-center justify-center rounded-full"
+                                    :disabled="!message || isLoading">
+                                    
+                                    <Icon v-if="isLoading" name="line-md:uploading-loop"
+                                        style="font-size:50px; color:black" class="text-token-text-primary" />
+
+                                    <Icon v-else name="material-symbols-light:arrow-circle-up"
+                                        style="font-size:65px; color:black" class="text-token-text-primary" />
                                 </button>
                             </form>
                         </div>
@@ -138,33 +139,85 @@
     </main>
 </template>
 
-<script lang="ts" setup>
+<script setup lang="ts">
 import { ref } from "vue";
+interface ChatMessage {
+    id: number;
+    actor: "AI" | "Human";
+    message: string;
+}
 
+const isLoading = ref(false)
 const message = ref("");
-
-const messages = ref([
+const messages = ref<ChatMessage[]>([
     {
+        id: 1,
         actor: "AI",
-        message: "Hey hey, how can I help you?",
-    },
-    {
-        actor: "Human",
-        message: "Please tell me a joke.",
-    },
-    {
-        actor: "AI",
-        message: "What color is a Carrot?",
-    },
+        message: "Hey hey, how can I help you 😃?",
+    }
 ]);
 
-const submitMessage = () => {
-    if (message.value == "") return;
-    messages.value.push({ actor: "Human", message: message.value });
-    message.value = "";
+const submitMessage = async () => {
+    if (!message.value.trim()) return;
+
+    try {
+        isLoading.value = true;
+
+        messages.value.push({
+            id: 1,
+            actor: "Human",
+            message: message.value.trim()
+        });
+
+        console.log("Sending messages to API:", messages.value);
+
+        const req = await fetch("/api/gpt3", {
+            method: "POST",
+            body: JSON.stringify(messages.value),
+            headers: {
+                "Content-Type": "application/json"
+            }
+        });
+
+        if (!req.ok) {
+            const errorText = await req.text();
+            console.error("API Error:", errorText);
+            throw new Error(`API error: ${req.status}`);
+        }
+
+        const response = await req.json();
+        console.log("API Response:", response);
+
+        if (response.message) {
+            messages.value.push({
+                id:1,
+                actor: "AI",
+                message: response.message
+            });
+        } else {
+            throw new Error("Invalid API response format");
+        }
+
+        message.value = "";
+
+    } catch (error) {
+        console.error("Error in chat:", error);
+        messages.value.push({
+        id:1,
+            actor: "AI",
+            message: "Sorry, I encountered an error. Please try again 😔"
+        });
+    } finally {
+        isLoading.value = false;
+    }
 };
 
-const moveToNextLine = () => {
-    message.value += "\n"; 
+const moveToNextLine = (e: KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        submitMessage();
+    } else if (e.key === "Enter" && e.shiftKey) {
+        message.value += "\n";
+    }
 };
 </script>
